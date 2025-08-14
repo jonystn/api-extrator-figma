@@ -2,7 +2,7 @@
 
 import { IncomingMessage, ServerResponse } from 'http';
 import chromium from '@sparticuz/chromium';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 
 // A função de extração (scrapePageLogic) não muda.
 const scrapePageLogic = () => {
