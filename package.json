@@ -1,12 +1,17 @@
 {
   "name": "api-extrator-figma",
   "version": "1.0.0",
-  "description": "",
+  "description": "API que extrai dados de um site para o plugin do Figma",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "dependencies": {
+    "chrome-aws-lambda": "^10.1.0",
+    "puppeteer-core": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.18", 
+    "typescript": "^4.9.4"      
+  }
 }
