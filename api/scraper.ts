@@ -72,7 +72,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const url = new URL(req.url!, `http://${req.headers.host}`).searchParams.get('url');
 
     if (!url) {
-        return res.status(400).json({ error: 'URL parameter is required.' });
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'URL parameter is required.' }));
+        return;
     }
 
     let browser = null;
@@ -90,11 +93,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         const data = await page.evaluate(scrapePageLogic);
         
         await browser.close();
-        
-        return res.status(200).json(data);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(data));
+        return;
 
     } catch (error: any) {
         if (browser) await browser.close();
-        return res.status(500).json({ error: `Server-side scraping failed: ${error.message}` });
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
+        return;
     }
 }
