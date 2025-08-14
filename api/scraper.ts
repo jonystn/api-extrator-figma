@@ -1,11 +1,12 @@
-// api/scraper.ts (VERSÃO FINAL COM A CORREÇÃO DO PUPPETEER)
+// api/scraper.ts (VERSÃO FINAL USANDO @sparticuz/chromium)
 
 import { IncomingMessage, ServerResponse } from 'http';
-import puppeteer from 'puppeteer-core';
-import chrome from 'chrome-aws-lambda';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer';
 
 // A função de extração (scrapePageLogic) permanece a mesma.
 const scrapePageLogic = () => {
+    // ... (o código de extração que você já tem, não precisa mudar)
     const getShowHide = (value: any) => (value && String(value).trim() !== '' ? 'show' : 'hide');
     const finalJson: any[] = [];
     const categoryWrappers = document.querySelectorAll('.subcategory__wrapper-main');
@@ -57,7 +58,8 @@ const scrapePageLogic = () => {
     return finalJson;
 };
 
-// O Handler da Vercel - a função principal da API
+
+// O Handler da Vercel
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -79,19 +81,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     let browser = null;
     try {
-        // --- INÍCIO DA CORREÇÃO CRÍTICA ---
-        // Aqui dizemos ao Puppeteer para usar o Chrome fornecido pelo chrome-aws-lambda
+        // --- CÓDIGO ATUALIZADO PARA USAR @sparticuz/chromium ---
         browser = await puppeteer.launch({
-            args: chrome.args,
-            // ESTA LINHA É A MAIS IMPORTANTE DE TODAS
-            executablePath: await chrome.executablePath, 
-            headless: chrome.headless,
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            headless: chromium.headless,
+            ignoreHTTPSErrors: true,
         });
-        // --- FIM DA CORREÇÃO CRÍTICA ---
+        // --- FIM DA ATUALIZAÇÃO ---
 
         const page = await browser.newPage();
-        page.setDefaultNavigationTimeout(60000);
-        await page.goto(url, { waitUntil: 'networkidle2' });
+        await page.goto(url, { waitUntil: 'networkidle0' });
 
         const data = await page.evaluate(scrapePageLogic);
         
