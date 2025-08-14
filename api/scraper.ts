@@ -1,12 +1,11 @@
-// api/scraper.ts (VERSÃO FINAL USANDO @sparticuz/chromium)
+// api/scraper.ts (VERSÃO FINAL, CORRIGIDA E SEM DUPLICAÇÃO)
 
 import { IncomingMessage, ServerResponse } from 'http';
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer';
 
-// A função de extração (scrapePageLogic) permanece a mesma.
+// A função de extração (scrapePageLogic) não muda.
 const scrapePageLogic = () => {
-    // ... (o código de extração que você já tem, não precisa mudar)
     const getShowHide = (value: any) => (value && String(value).trim() !== '' ? 'show' : 'hide');
     const finalJson: any[] = [];
     const categoryWrappers = document.querySelectorAll('.subcategory__wrapper-main');
@@ -59,59 +58,33 @@ const scrapePageLogic = () => {
 };
 
 
-// O Handler da Vercel
+// O Handler da Vercel - a função principal da API
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
-   let browser = null;
-    try {
-        // --- INÍCIO DA CORREÇÃO FINAL ---
-        browser = await puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath(),
-            // GARANTINDO O USO DA CONFIGURAÇÃO HEADLESS CORRETA FORNECIDA PELO PACOTE
-            headless: chromium.headless,
-            ignoreHTTPSErrors: true,
-        });
-        // --- FIM DA CORREÇÃO FINAL ---
-
-        const page = await browser.newPage();
-        await page.goto(url, { waitUntil: 'networkidle0' });
-
-        const data = await page.evaluate(scrapePageLogic);
-        
-        await browser.close();
-        
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify(data));
-
-    } catch (error: any) {
-        if (browser) await browser.close();
-        res.statusCode = 500;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
-    }
+    // 1. Definir cabeçalhos CORS primeiro
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    // 2. Lidar com a requisição de verificação CORS
     if (req.method === 'OPTIONS') {
         res.statusCode = 200;
         res.end();
         return;
     }
-
+    
+    // 3. Pegar a URL do parâmetro da requisição
     const url = new URL(req.url!, `http://${req.headers.host}`).searchParams.get('url');
 
+    // 4. Verificar se a URL foi fornecida
     if (!url) {
         res.statusCode = 400;
         res.setHeader('Content-Type', 'application/json');
         return res.end(JSON.stringify({ error: 'URL parameter is required.' }));
     }
 
+    // 5. Agora, iniciar o Puppeteer
     let browser = null;
     try {
-        // --- CÓDIGO ATUALIZADO PARA USAR @sparticuz/chromium ---
         browser = await puppeteer.launch({
             args: chromium.args,
             defaultViewport: chromium.defaultViewport,
@@ -119,7 +92,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             headless: chromium.headless,
             ignoreHTTPSErrors: true,
         });
-        // --- FIM DA ATUALIZAÇÃO ---
 
         const page = await browser.newPage();
         await page.goto(url, { waitUntil: 'networkidle0' });
