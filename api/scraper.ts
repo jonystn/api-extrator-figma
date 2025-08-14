@@ -61,6 +61,36 @@ const scrapePageLogic = () => {
 
 // O Handler da Vercel
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
+   let browser = null;
+    try {
+        // --- INÍCIO DA CORREÇÃO FINAL ---
+        browser = await puppeteer.launch({
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath: await chromium.executablePath(),
+            // GARANTINDO O USO DA CONFIGURAÇÃO HEADLESS CORRETA FORNECIDA PELO PACOTE
+            headless: chromium.headless,
+            ignoreHTTPSErrors: true,
+        });
+        // --- FIM DA CORREÇÃO FINAL ---
+
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: 'networkidle0' });
+
+        const data = await page.evaluate(scrapePageLogic);
+        
+        await browser.close();
+        
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify(data));
+
+    } catch (error: any) {
+        if (browser) await browser.close();
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
+    }
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
