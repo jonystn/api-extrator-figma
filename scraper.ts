@@ -1,11 +1,13 @@
-// figma-scraper-api/api/scraper.ts
+// api/scraper.ts (VERSÃO FINAL E COMPLETA)
 
 import { IncomingMessage, ServerResponse } from 'http';
 import puppeteer from 'puppeteer-core';
 import chrome from 'chrome-aws-lambda';
 
 // A função de extração que vai rodar DENTRO do navegador robô
+// É importante que ela não tenha dependências externas.
 const scrapePageLogic = () => {
+  // Funções e lógica para serem executadas no contexto do navegador
   const getShowHide = (value: any) => (value && String(value).trim() !== '' ? 'show' : 'hide');
   const finalJson: any[] = [];
 
@@ -21,7 +23,6 @@ const scrapePageLogic = () => {
     const products = wrapper.querySelectorAll('.cs-product-tile');
     products.forEach(product => {
       const category = (product.querySelector('.cs-product-tile__category') as HTMLElement)?.innerText.trim() || '';
-      const categorySubtitle = (product.querySelector('.cs-product-tile__category-subtitle') as HTMLElement)?.innerText.trim() || '';
       const nameLink = product.querySelector('.cs-product-tile__name-link') as HTMLAnchorElement;
       
       let nameLine1 = '', nameLine2 = '', bio = '', productURL = '';
@@ -36,9 +37,7 @@ const scrapePageLogic = () => {
         nameLine2 = parts[1]?.trim() || '';
       }
       
-      const badge = (product.querySelector('.cs-product-tile__badge-item') as HTMLElement)?.innerText.trim() || '';
       const price = (product.querySelector('.price') as HTMLElement)?.innerText.trim() || '';
-      
       const imgEl = product.querySelector('img.cs-product-tile__image') as HTMLImageElement;
       const imgSrc1 = imgEl?.getAttribute('data-src-1') || imgEl?.getAttribute('src') || '';
       const imgSrc2 = imgEl?.getAttribute('data-src-2') || '';
@@ -48,12 +47,12 @@ const scrapePageLogic = () => {
         type: "card",
         content: {
           Category: category, NameLine1: nameLine1, NameLine2: nameLine2,
-          Bio: bio, ShowBio: getShowHide(bio), BadgeContent: badge, ShowBadge: getShowHide(badge),
-          Price: price, ImageSrc: imgSrc1, ImageSrc1: imgSrc1, ImageSrc2: imgSrc2, ImageSrc3: imgSrc3,
-          // Preencha outros campos aqui se necessário
-          CategorySubtitle: categorySubtitle, OldPrice: '', ShowDiscount: 'hide',
-          UnitValue: '', ShowUnitValue: 'hide', Weight: '', PricePerWeight: '',
-          ShowPricePerWeight: 'hide', ProductURL: productURL
+          Bio: bio, ShowBio: getShowHide(bio), Price: price,
+          ImageSrc: imgSrc1, ImageSrc1: imgSrc1, ImageSrc2: imgSrc2, ImageSrc3: imgSrc3,
+          ProductURL: productURL,
+          // Preenchendo campos restantes para evitar erros
+          CategorySubtitle: '', OldPrice: '', ShowDiscount: 'hide', BadgeContent: '', ShowBadge: 'hide',
+          UnitValue: '', ShowUnitValue: 'hide', Weight: '', PricePerWeight: '', ShowPricePerWeight: 'hide',
         }
       });
     });
@@ -62,9 +61,21 @@ const scrapePageLogic = () => {
 };
 
 
-// O Handler da Vercel
+// O Handler da Vercel - a função principal da API
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  // Pega a URL do parâmetro da query (?url=...)
+  // Permitir requisições de qualquer origem (essencial para o plugin do Figma)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // O navegador envia uma requisição "OPTIONS" antes do GET para verificar o CORS.
+  // Precisamos responder com sucesso a ela.
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 200;
+    res.end();
+    return;
+  }
+
   const url = new URL(req.url!, `http://${req.headers.host}`).searchParams.get('url');
 
   if (!url) {
@@ -82,24 +93,25 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     });
 
     const page = await browser.newPage();
+    // Aumentando o timeout para 60 segundos para páginas lentas
+    page.setDefaultNavigationTimeout(60000); 
     await page.goto(url, { waitUntil: 'networkidle2' });
 
-    // Roda a nossa lógica de extração no contexto da página
     const data = await page.evaluate(scrapePageLogic);
 
     await browser.close();
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Permite que o plugin do Figma chame a API
     return res.end(JSON.stringify(data));
 
   } catch (error: any) {
     if (browser) {
       await browser.close();
     }
+    // Retornar o erro como JSON para que possamos vê-lo no plugin
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json');
-    return res.end(JSON.stringify({ error: `Failed to scrape page: ${error.message}` }));
+    return res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
   }
 }
