@@ -1,10 +1,10 @@
-// api/scraper.ts (VERSÃO LIMPA E CORRETA)
+// api/scraper.ts (VERSÃO FINAL COM A CORREÇÃO DO PUPPETEER)
 
 import { IncomingMessage, ServerResponse } from 'http';
 import puppeteer from 'puppeteer-core';
 import chrome from 'chrome-aws-lambda';
 
-// A função de extração que vai rodar DENTRO do navegador robô
+// A função de extração (scrapePageLogic) permanece a mesma.
 const scrapePageLogic = () => {
     const getShowHide = (value: any) => (value && String(value).trim() !== '' ? 'show' : 'hide');
     const finalJson: any[] = [];
@@ -74,17 +74,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!url) {
         res.statusCode = 400;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'URL parameter is required.' }));
-        return;
+        return res.end(JSON.stringify({ error: 'URL parameter is required.' }));
     }
 
     let browser = null;
     try {
+        // --- INÍCIO DA CORREÇÃO CRÍTICA ---
+        // Aqui dizemos ao Puppeteer para usar o Chrome fornecido pelo chrome-aws-lambda
         browser = await puppeteer.launch({
             args: chrome.args,
-            executablePath: await chrome.executablePath,
+            // ESTA LINHA É A MAIS IMPORTANTE DE TODAS
+            executablePath: await chrome.executablePath, 
             headless: chrome.headless,
         });
+        // --- FIM DA CORREÇÃO CRÍTICA ---
 
         const page = await browser.newPage();
         page.setDefaultNavigationTimeout(60000);
@@ -93,18 +96,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         const data = await page.evaluate(scrapePageLogic);
         
         await browser.close();
+        
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify(data));
-        return;
+        return res.end(JSON.stringify(data));
 
     } catch (error: any) {
         if (browser) await browser.close();
-        // Log detalhado para debug no Vercel
-        console.error('Scraper error:', error);
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
-        return;
+        return res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
     }
 }
