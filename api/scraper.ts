@@ -91,6 +91,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             executablePath: await chromium.executablePath(),
             headless: chromium.headless,
             ignoreHTTPSErrors: true,
+            env: { ...process.env, TZ: 'UTC' },
         });
 
         const page = await browser.newPage();
