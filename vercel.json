@@ -1,7 +1,8 @@
 {
-  "functions": {
-    "api/**/*.ts": {
-      "runtime": "nodejs18.x"
+  "builds": [
+    {
+      "src": "api/scraper.ts",
+      "use": "@vercel/node"
     }
-  }
+  ]
 }
