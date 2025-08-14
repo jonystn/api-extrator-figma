@@ -100,6 +100,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
     } catch (error: any) {
         if (browser) await browser.close();
+        // Log detalhado para debug no Vercel
+        console.error('Scraper error:', error);
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
