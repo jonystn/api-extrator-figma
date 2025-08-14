@@ -6,10 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "dependencies": {
-    "@sparticuz/chromium": "123.0.1",
-    "puppeteer": "22.10.0",
-    "typescript": "4.9.4",
-    "@types/node": "18.11.18"
-  }
+"dependencies": {
+  "@vercel/node": "^3.0.0",
+  "puppeteer-core": "^21.0.0",
+  "@sparticuz/chromium": "^112.0.0"
+}
 }

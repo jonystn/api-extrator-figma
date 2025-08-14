@@ -85,28 +85,44 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     // 5. Agora, iniciar o Puppeteer
     let browser = null;
     try {
-        browser = await puppeteer.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath: await chromium.executablePath(),
-            headless: 'new',
-            ignoreHTTPSErrors: true,
-            env: { ...process.env, TZ: 'UTC' },
-        });
+        // Tenta aguardar o binário do Chromium estar livre
+        let launched = false;
+        let launchError = null;
+        for (let i = 0; i < 3; i++) {
+            try {
+                browser = await puppeteer.launch({
+                    args: chromium.args,
+                    defaultViewport: chromium.defaultViewport,
+                    executablePath: await chromium.executablePath(),
+                    headless: 'new',
+                    ignoreHTTPSErrors: true,
+                    env: { ...process.env, TZ: 'UTC' },
+                });
+                launched = true;
+                break;
+            } catch (err) {
+                launchError = err;
+                await new Promise(resolve => setTimeout(resolve, 1000)); // espera 1s
+            }
+        }
+        if (!launched) throw launchError;
 
-        const page = await browser.newPage();
-        await page.goto(url, { waitUntil: 'networkidle0' });
-
-        const data = await page.evaluate(scrapePageLogic);
-        
-        await browser.close();
-        
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify(data));
+        if (browser) {
+            const page = await browser.newPage();
+            await page.goto(url, { waitUntil: 'networkidle0' });
+            const data = await page.evaluate(scrapePageLogic);
+            await browser.close();
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify(data));
+        } else {
+            throw new Error('Browser could not be launched.');
+        }
 
     } catch (error: any) {
-        if (browser) await browser.close();
+        if (browser) {
+            await browser.close();
+        }
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
         return res.end(JSON.stringify({ error: `Server-side scraping failed: ${error.message}` }));
