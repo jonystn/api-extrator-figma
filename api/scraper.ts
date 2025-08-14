@@ -89,7 +89,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             args: chromium.args,
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath(),
-            headless: chromium.headless,
+            headless: 'new',
             ignoreHTTPSErrors: true,
             env: { ...process.env, TZ: 'UTC' },
         });
